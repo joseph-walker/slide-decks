@@ -17,7 +17,10 @@ const temperatureTraversal = fromTraversable(array)<TemperatureReading>();
 const temperatureLens = Lens.fromProp<TemperatureReading>()('degreesK');
 
 const tempKToC = new Iso<number, number>(k => k - 273.15, c => c + 273.15);
-const tempCToF = new Iso<number, number>(c => c * (9 / 5) + 32, f => f / (9 / 5) - 32);
+const tempCToF = new Iso<number, number>(c => c * (9 / 5) + 32, f => (f - 32) * (5 / 9));
+
+console.log(tempCToF.get(20));
+console.log(tempCToF.reverseGet(68));
 
 const citiesLens = Lens.fromProp<DataSet>()('cities');
 const citiesTraversable = fromTraversable(array)<City>();

@@ -114,6 +114,29 @@ const myName = nameSgetter(me);
 
 ---
 
+### We can add some helpers and utilities
+
+```typescript
+class SGetter {
+    // Create a SGetter from a prop
+    static fromProp(propName) {
+        // ...
+    }
+
+    // Create a SGetter from an array of props
+    static fromPath(propPath) {
+        // ...
+    }
+
+    // Combine our setter and getter
+    compose(nextSGetter) {
+        // ...
+    }
+}
+```
+
+---
+
 #### __SGetter__ is a dumb name, though. Let's call it...
 
 ---
@@ -121,3 +144,134 @@ const myName = nameSgetter(me);
 [.header: alignment(center)]
 
 # Lens
+
+---
+
+### A lens encodes a __getter__ and __setter__
+
+#### It can be a _class_. Or it can be a set of _functions_.
+
+#### All that matters is that the implementation follows...
+
+---
+
+### The 3 Lens Laws
+
+- Law 1: __Get-Put__
+If you _modify_ something by changing its supbart to what it _already is_... Nothing happens.
+
+```typescript
+setPart(getPart(target), target) === target
+```
+
+- Law 2: __Put-Get__
+If you _modify_ something by inserting a subpart and then _view_ the result, you'll get back the inserted part.
+
+```typescript
+getPart(setPart(newValue, target)) === newValue
+```
+
+- Law 3: __Put-Put__
+If you _modify_ something by inserting some part _a_, then do it again with part _b_, it's exactly the same as if you only did the second part.
+
+```typescript
+setPart(valueB, setPart(valueA, target)) === setPart(valueB, target)
+```
+
+---
+
+### Examples using Ramda
+
+```typescript
+import * as R from 'ramda';
+
+const me = {
+    name: 'Joseph',
+    occupation: 'Programmer'
+}
+
+const nameLens = R.lensProp('name');
+
+// Using a Lens
+R.set(nameLens, 'Walker', me); // { name: 'Walker', ... }
+
+// You can modify a value using lenses too
+R.over(nameLens, s => s.split(''), me); // { name: ['J', 'o', 's', ...], ... }
+
+// Get-Put Law
+R.set(nameLens, R.view(nameLens, me), me); // === me
+
+// Put-Get Law
+R.view(nameLens, R.set(nameLens, 'Walker', me)); // 'Walker'
+
+// Put-Put Law
+R.set(nameLens, 'Walker', R.set(nameLens, 'Ted', me)); // { name: 'Walker', ... }
+```
+
+---
+
+### Can we go __deeper__?
+
+---
+
+### What if we modify our get and set operations?
+
+```typescript
+// Instead of...
+const getThing = source => source.thing;
+
+// What about:
+const getThing = source => 'thing' in source ? source.thing : null;
+
+// And instead of...
+function setThing = (newValue, source) => ({ ...source, thing: newValue });
+
+// What about:
+function setThing(newValue, source) {
+    return 'thing' in source
+        ? {
+            ...source,
+            thing: newValue
+        }
+        : source
+}
+```
+
+---
+
+### We've just created an __Optional__ Optic
+
+Ramda Lenses are actually __Optionals__ [^2]
+
+```typescript
+// This is valid, but will return undefined
+R.view(
+    R.lensProp('lastName'),
+    R.view(
+        R.lensProp('name'),
+        {}
+    )
+);
+```
+
+[^2]: Although Ramda lenses will _set_ values that don't exist, so its implementation is slightly different.
+
+---
+
+### We can create __more__ combinations, too. [^3]
+
+[^3]: Examples from here forward will use a library called Monocole-TS instead of Ramda, since Ramda only has Lenses and Optionals
+
+---
+
+If we change our get and set to modify a value in a __reversible__ way, we've created an __Iso__.
+
+The names __get__ and __set__ don't make sense in this context, though, so we call them __get__ and __reverse-get__.
+
+```typescript
+// This is a library called Monocle-TS
+const celsiusToFreedom = new Iso<number, number>(c => c * (9 / 5) + 32, f => (f - 32) * (5 / 9));
+
+celsiusToFreedom.get(20); // 68
+celsiusToFreedom.reverseGet(68); // 20
+```
