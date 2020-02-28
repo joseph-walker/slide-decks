@@ -31,6 +31,8 @@ const cityTriviaFactoidLens = Lens.fromProp<CityTrivia>()('factoid');
 const stringFactoidPrism = Prism.fromPredicate<Factoid, StringFactoid>((a): a is StringFactoid => a.type === "string");
 const stringFactoidFactLens = Lens.fromProp<StringFactoid>()('fact');
 
+const traversalOfNumbers = fromTraversable(array)<number>();
+
 const degreesCTraversal = citiesLens
     .composeTraversal(citiesTraversable)
     .composeLens(cityTemperatureLens)
@@ -55,3 +57,11 @@ console.log(
         4
     )
 );
+
+const evenNumberPrism = Prism.fromPredicate<number, number>((a): a is number => a % 2 === 0);
+
+console.log(
+    evenNumberPrism.reverseGet(3)
+);
+
+const stringPrism = Prism.fromPredicate<string | number, string>((a): a is string => typeof a === 'string');

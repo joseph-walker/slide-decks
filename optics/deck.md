@@ -75,7 +75,7 @@ const myBrother = setName(setFirstName("Jim", getName(me)), me);
 
 ### And since nesting pure functions is equivalent to __composition__...
 
-We can combine them in an idiomatic way[^1].
+We can combine them in an idiomatic way.[^1].
 
 ```typescript
 // Get the name, then get the first name
@@ -109,7 +109,7 @@ class SGetter {
 
 const nameSgetter = new SGetter(getName, setName);
 
-const myName = nameSgetter(me);
+const myName = nameSgetter.get(me);
 ```
 
 ---
@@ -133,6 +133,11 @@ class SGetter {
         // ...
     }
 }
+
+// For example...
+const myFirstName = SGetter
+    .fromProp('name')
+    .compose(Sgetter.fromProp('last'))
 ```
 
 ---
@@ -221,7 +226,7 @@ R.set(nameLens, 'Walker', R.set(nameLens, 'Ted', me)); // { name: 'Walker', ... 
 const getThing = source => source.thing;
 
 // What about:
-const getThing = source => 'thing' in source ? source.thing : null;
+const getThing = source => source && 'thing' in source ? source.thing : null;
 
 // And instead of...
 function setThing = (newValue, source) => ({ ...source, thing: newValue });
@@ -241,7 +246,9 @@ function setThing(newValue, source) {
 
 ### We've just created an __Optional__ Optic
 
-Ramda Lenses are actually __Optionals__ [^2]
+Optionals can read and set values that may or may not exist.
+
+Ramda Lenses are actually __Optionals__. [^2]
 
 ```typescript
 // This is valid, but will return undefined
@@ -254,17 +261,19 @@ R.view(
 );
 ```
 
-[^2]: Although Ramda lenses will _set_ values that don't exist, so its implementation is slightly different.
+[^2]: Although Ramda lenses will _set_ values that don't exist, so its implementation is slightly different than ours.
 
 ---
 
-### We can create __more__ combinations, too. [^3]
+### We can go __even deeper__. [^3]
 
-[^3]: Examples from here forward will use a library called Monocole-TS instead of Ramda, since Ramda only has Lenses and Optionals
+[^3]: Examples from here forward will use a library called Monocole-TS instead of Ramda, since Ramda only has Lenses / Optionals.
 
 ---
 
-If we change our get and set to modify a value in a __reversible__ way, we've created an __Iso__.
+### Isos [^4]
+
+If we change our get and set to modify a value in a __reversible__ way, we've created an __Iso__ optic.
 
 The names __get__ and __set__ don't make sense in this context, though, so we call them __get__ and __reverse-get__.
 
@@ -275,3 +284,61 @@ const celsiusToFreedom = new Iso<number, number>(c => c * (9 / 5) + 32, f => (f 
 celsiusToFreedom.get(20); // 68
 celsiusToFreedom.reverseGet(68); // 20
 ```
+
+[^4]: Short for "Isomorphism"
+
+---
+
+### Traversals
+
+We can change our get and set to iterate over arrays and create a __Traversal__ optic.
+
+```typescript
+// This instantiation uses Monocle-TS style syntax
+// It reads as "Create a Traversal of numbers from a Traversable Thing, in this case array
+const traversalOfNumbers = fromTraversable(array)<number>();
+
+traversalOfNumbers.set(3)([1, 2, 3]);
+// [3, 3, 3]
+
+traversalOfNumbers.modify(n => n * 2)([1, 2, 3]);
+// [2, 4, 6]
+```
+
+---
+
+### Prisms
+
+If we're clever, we can even create an optic that branches: A __Prism__.
+
+A Prism will __narrow a condition__, testing the focus against a predicate and returning __something__ or __nothing__.
+
+It's like the Optics equivalent of an __if statement__.
+
+```typescript
+// For example, you can narrow with a custom filter function
+const evenNumberPrism = Prism.fromPredicate<number, number>((a): a is number => a % 2 === 0);
+
+evenNumberPrism.getOption(3); // Nothing
+evenNumberPrism.getOption(4); // 4
+
+// Or you can narrow a sum type
+const stringPrism = Prism.fromPredicate<string | number, string>((a): a is string => typeof a === 'string');
+
+stringPrism.getOption(3); // Nothing
+stringPrism.getOption('4'); // '4'
+```
+
+---
+
+All of these optics, no matter how complicated, are still just __getters__ and __setters__.
+
+---
+
+### ...So we can __compose__ them together!
+
+---
+
+[.text: alignment(center), text-scale(0.5)]
+
+(Begin Live Code Portion)
