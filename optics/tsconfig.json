@@ -6,8 +6,10 @@
         "noImplicitReturns": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
+        "module": "CommonJS",
         "target": "es2018",
         "allowJs": true,
+        "baseUrl": "./src"
     },
     "include": [
         "./src/**/*"

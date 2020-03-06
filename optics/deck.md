@@ -288,8 +288,30 @@ celsiusToFreedom.reverseGet(68); // 20
 [^4]: Short for "Isomorphism"
 
 ---
+### Isos Cont.
 
-### Traversals
+You can use an Iso to convert between different forms of a value (measurement units, etc.)
+
+You can also use an Iso to transform data to make it easier to work with or inspect and set.
+
+```typescript
+// Maybe we store some value in a class, e.g. a Person class
+const me: Person = new Person("Joseph", 28);
+
+// But we have a component that wants a [name, age] tuple
+// We can make a tuple that turns a Person into that tuple shape
+const personToTuple = new Iso<Person, [string, number]>(
+    p => [p.get('name'), p.get('age')],
+    t => new Person(t[0], t[1])
+);
+
+personToTuple.get(me); // ["Joseph", 28]
+personToTuple.reverseGet(["Joseph", 28]); // Person
+```
+
+---
+
+### Traversals [^5]
 
 We can change our get and set to iterate over arrays and create a __Traversal__ optic.
 
@@ -305,6 +327,8 @@ traversalOfNumbers.modify(n => n * 2)([1, 2, 3]);
 // [2, 4, 6]
 ```
 
+[^5]: As a historical footnote, traversals were "discovered" before lenses. Lenses were derived from narrowing down traversals!
+
 ---
 
 ### Prisms
@@ -312,8 +336,6 @@ traversalOfNumbers.modify(n => n * 2)([1, 2, 3]);
 If we're clever, we can even create an optic that branches: A __Prism__.
 
 A Prism will __narrow a condition__, testing the focus against a predicate and returning __something__ or __nothing__.
-
-It's like the Optics equivalent of an __if statement__.
 
 ```typescript
 // For example, you can narrow with a custom filter function
@@ -331,14 +353,313 @@ stringPrism.getOption('4'); // '4'
 
 ---
 
+### Prisms Cont.
+
+A Prism is like the Optics equivalent of an __if statement__.
+
+This is trivial to understand for __getting__. But what about __setting__?
+
+```typescript
+// Remember our String Prism
+// It "views" strings or numbers, but "focuses" on only strings
+const stringPrism = Prism.fromPredicate<string | number, string>((a): a is string => typeof a === 'string');
+
+// === Joseph
+// Because our Prism only focuses if the target is a string
+stringPrism.set("Joseph")("Jim"); 
+
+// === 28
+// Because our Prism does NOT focus on numbers, so this is a no-op
+stringPrism.set("Joseph")(28);
+
+// === 3
+// Even though 8 WOULD be in focus 3 isn't odd, so we're NOT in focus
+evenNumberPrism.set(8)(3);
+```
+
+---
+
+_When setting with a Prism_, the prism's condition is run against the __focus__, not the __incoming value__.
+
+Which means a Prism can make itself fail. This is __a good thing__!
+
+Because...
+
+---
+
 All of these optics, no matter how complicated, are still just __getters__ and __setters__.
 
 ---
 
-### ...So we can __compose__ them together!
+### ...So we can __compose__ _all_ of them together!
 
 ---
 
-[.text: alignment(center), text-scale(0.5)]
+### Let's say we have some __Interfaces__
 
-(Begin Live Code Portion)
+```typescript
+export interface Data { cities: City[] }
+
+export interface City {
+    name: string
+    trivia?: CityTrivia
+}
+
+export interface CityTrivia {
+    population: number
+    factoid: StringFactoid | HomeOfFactoid
+}
+
+export interface StringFactoid {
+    type: "string",
+    fact: string
+}
+
+export interface HomeOfFactoid {
+    type: "homeof",
+    firstName: string,
+    lastName: string
+}
+```
+
+---
+
+### And some __Data__
+
+```typescript
+export const data: Data = {
+    cities: [
+        {
+            name: "Atlanta"
+        },
+        {
+            name: "Dallas",
+            trivia: {
+                population: 1341000,
+                factoid: {
+                    type: "string",
+                    fact: "Site of JFK assassination"
+                }
+            }
+        }
+    ]
+}
+```
+
+---
+
+_Site of the JFK assassination_ is kind of a depressing factoid.
+
+Let's __change it__.
+
+--- 
+
+### When working with optics, it's easiest to build from __bottom up__.
+
+So let's start with changing the __fact__ of a __StringFactoid__
+
+```typescript
+// Let's make a lens for a StringFactoid that focuses on the "fact" text
+const stringFactoidFactLens = Lens.fromProp<StringFactoid>()('fact');
+
+// We can use it like this:
+stringFactoidFactLens
+    .set("Frozen margarita machine invented here")({
+        type: "string",
+        fact: "Site of JFK assassination"
+    })
+```
+
+---
+
+Our factoids live inside of __CityTrivia__. Let's make another lens:
+
+```typescript
+// Make a lens that focuses on the "factoid" property
+const cityTriviaFactoidLens = Lens.fromProp<CityTrivia>()('factoid');
+```
+
+===
+
+But __CityTrivia.factoid__ is a _discriminated union_.
+
+Our stringFactoidFactLens only works on _StringFactoids_ -- We need a __Prism__.
+
+```typescript
+// Given a discriminated union, focus on StringFactoids
+const stringFactoidPrism = Prism.fromPredicate<StringFactoid | HomeOfFactoid, StringFactoid>((a): a is StringFactoid => a.type === "string");
+
+// We could define an inverse prism that focuses on HomeOfFactoids too,
+// but we'll skip that for now
+```
+
+---
+
+Let's combine the optics we have so far!
+
+```typescript
+// Composing optics together
+const combinedOptic = cityTriviaFactoidLens
+    .composePrism(stringFactoidPrism)
+    .composeLens(stringFactoidFactLens);
+
+// And we'd use it like this:
+combinedOptic
+    .set("Frozen margarita machine invented here")({
+        population: 1341000,
+        factoid: {
+            type: "string",
+            fact: "Site of JFK assassination"
+        }
+    })
+```
+
+---
+
+Keep going up the chain!
+
+A __City__ may or may not have trivia. We'll need an __Optional__ for the next step.
+
+```typescript
+// Focus on the "trivia" property of a City, if it exists
+const cityTriviaOption = Optional.fromNullableProp<City>()('trivia');
+
+// Let's add it to our chain
+const combinedOptic = cityTriviaOption
+    .composeLens(cityTriviaFactoidLens)
+    .composePrism(stringFactoidPrism)
+    .composeLens(stringFactoidFactLens);
+```
+
+---
+
+Now we want to operate on an array of __City__. Array means we reach for __Traversal__.
+
+```typescript
+// We have an _array_ of _City_
+// The syntax here being a factory function instead of a static method
+// like all the other optics is a quirk of the library we're using for the examples
+const citiesTraversal = fromTraversable(array)<City>();
+
+// Toss it on the stack
+const combinedOptic = citiesTraversal
+    .composeOptional(cityTriviaOption)
+    .composeLens(cityTriviaFactoidLens)
+    .composePrism(stringFactoidPrism)
+    .composeLens(stringFactoidFactLens);
+```
+
+---
+
+Now we can construct the final piece: The __Lens__ that gets the cities from our __Data__.
+
+```typescript
+// Gets the cities prop from Data
+const citiesLens = Lens.fromProp<Data>()('cities');
+
+// Our final optic looks like this:
+// 1) We focus on the cities
+const finalOptic = citiesLens
+    // 2) We spread our focus to every element of the cities property
+    .composeTraversal(citiesTraversal)
+    // 3) We focus on the trivia, but only if it's there
+    .composeOptional(cityTriviaOption)
+    // 4) We focus on the factoid of the trivia
+    .composeLens(cityTriviaFactoidLens)
+    // 5) We narrow our focus to StringFactoids
+    .composePrism(stringFactoidPrism)
+    // 6) We finally focus on the "fact" property
+    .composeLens(stringFactoidFactLens);
+```
+
+But there's one final step...
+
+---
+
+Our final optic as it stands now focuses on the __fact__ of __every__ city in our data set.
+
+We only want to update the fact for _Dallas_.
+
+We could use a __Prism__ for this to narrow a _City_ to a _Dallas City_, but __Monocle Traversals__ have a few convenient helpers we can leverage.
+
+---
+
+One of them is __filter__. This is sort of like an _inline Prism_, and it follows the same "predicate" pattern.
+
+```typescript
+const finalFinalOptic = citiesLens
+    .composeTraversal(citiesTraversal)
+        // We call "filter" inline here. The expression we pass in will receive a City,
+        // the focus of the traversal, and we can return true or false just like a normal
+        // Array filter.
+        .filter(c => c.name === "Dallas")
+    .composeOptional(cityTriviaOption)
+    .composeLens(cityTriviaFactoidLens)
+    .composePrism(stringFactoidPrism)
+    .composeLens(stringFactoidFactLens)
+```
+
+---
+
+And now we're ready to update our Dallas factoid...
+
+```typescript
+finalFinalOptic.set("Frozen margarita machine invented here")(data);
+// {
+//     "cities": [
+//         {
+//             "name": "Atlanta"
+//         },
+//         {
+//             "name": "Dallas",
+//             "trivia": {
+//                 "population": 1341000,
+//                 "factoid": {
+//                     "type": "string",
+//                     "fact": "Frozen margarita machine invented here"
+//                 }
+//             }
+//         }
+//     ]
+// }
+```
+
+---
+
+### The optics that we just created are all __reusable__.
+
+```typescript
+// We have a toolbelt now:
+export const citiesLens = // ...
+export const citiesTraversal = // ...
+export const cityTriviaOption = // ...
+export const cityTriviaFactoidLens = // ...
+export const stringFactoidPrism = // ...
+export const stringFactoidFactLens = // ...
+```
+
+You could keep adding more optics, too. You could build a __library of optics__ around your data model.
+
+It's similar to building a library of Redux Selectors -- but expontentially more flexible because Optics can be composed _on demand_, and can __get__ AND __set__.
+
+---
+
+## Optics Are:
+
+### • Simple
+### • Powerful
+### • Composable
+### • Immutable
+
+---
+
+Some Optics libraries to check out:
+
+| __Library__        | __Optics__                            | __Comments__                                                                                                                                                           |
+|----------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| _Monocle_        | Lens Optional Prism Iso Traversal | Part of a larger ecosystem called "fp-ts." Documentation is (for lack of a better term) garbage. Typescript First.                                                                             |
+| _Ramda_          | Lens                              | Lenses exposed by Ramda are Partial. Partial Typescript support.                                                                                                   |
+| _Shades_         | Lens Traversal                    | Shades technically implements other optics, but it calls them Virtual Lenses? Has full Typescript support.                                                         |
+| _Partial Lenses_ | Lens Optional Prism Iso Traversal | Plays fast and loose with the lens laws in favor of providing more straightforward APIs and utilities. Claims to have near-native performance for composed lenses. |
+
+There are many others, but these are actively maintained.

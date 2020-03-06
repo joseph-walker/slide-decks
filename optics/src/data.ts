@@ -1,6 +1,13 @@
-export interface TemperatureReading {
-    timestamp: Date
-    degreesK: number
+export interface Data { cities: City[] }
+
+export interface City {
+    name: string
+    trivia?: CityTrivia
+}
+
+export interface CityTrivia {
+    population: number
+    factoid: StringFactoid | HomeOfFactoid
 }
 
 export interface StringFactoid {
@@ -14,37 +21,10 @@ export interface HomeOfFactoid {
     lastName: string
 }
 
-export type Factoid = StringFactoid | HomeOfFactoid
-
-export interface CityTrivia {
-    population: number
-    factoid: Factoid
-}
-
-export interface City {
-    name: string
-    trivia?: CityTrivia
-    temperatures: TemperatureReading[]
-}
-
-export interface DataSet {
-    cities: City[]
-}
-
-export const data: DataSet = {
+export const data: Data = {
     cities: [
         {
-            name: "Atlanta",
-            temperatures: [
-                {
-                    timestamp: new Date(),
-                    degreesK: 278.15
-                },
-                {
-                    timestamp: new Date(),
-                    degreesK: 279.65
-                }
-            ]
+            name: "Atlanta"
         },
         {
             name: "Dallas",
@@ -54,13 +34,7 @@ export const data: DataSet = {
                     type: "string",
                     fact: "Site of JFK assassination"
                 }
-            },
-            temperatures: [
-                {
-                    timestamp: new Date(),
-                    degreesK: 282.15
-                }
-            ]
+            }
         }
     ]
 }
