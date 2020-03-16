@@ -142,7 +142,13 @@ const myFirstName = SGetter
 
 ---
 
-#### __SGetter__ is a dumb name, though. Let's call it...
+[.background-color: rgba(0, 0, 0)]
+
+![fit](./images/github.png)
+
+---
+
+So let's call it...
 
 ---
 
@@ -335,17 +341,27 @@ traversalOfNumbers.modify(n => n * 2)([1, 2, 3]);
 
 If we're clever, we can even create an optic that branches: A __Prism__.
 
-A Prism will __narrow a condition__, testing the focus against a predicate and returning __something__ or __nothing__.
-
 ```typescript
-// For example, you can narrow with a custom filter function
-const evenNumberPrism = Prism.fromPredicate<number, number>((a): a is number => a % 2 === 0);
+// Focus on numbers that are even, but not odd
+const evenNumberPrism = Prism.fromPredicate<number, number>(
+    (a): a is number => a % 2 === 0
+);
 
 evenNumberPrism.getOption(3); // Nothing
 evenNumberPrism.getOption(4); // 4
+```
 
-// Or you can narrow a sum type
-const stringPrism = Prism.fromPredicate<string | number, string>((a): a is string => typeof a === 'string');
+---
+
+### Prisms Cont.
+
+A Prism will __narrow a condition__, testing the focus against a predicate and returning __something__ or __nothing__.
+
+```typescript
+// For example, you can narrow a sum type
+const stringPrism = Prism.fromPredicate<string | number, string>(
+    (a): a is string => typeof a === 'string'
+);
 
 stringPrism.getOption(3); // Nothing
 stringPrism.getOption('4'); // '4'
@@ -362,7 +378,9 @@ This is trivial to understand for __getting__. But what about __setting__?
 ```typescript
 // Remember our String Prism
 // It "views" strings or numbers, but "focuses" on only strings
-const stringPrism = Prism.fromPredicate<string | number, string>((a): a is string => typeof a === 'string');
+const stringPrism = Prism.fromPredicate<string | number, string>(
+    (a): a is string => typeof a === 'string'
+);
 
 // === Joseph
 // Because our Prism only focuses if the target is a string
@@ -468,6 +486,11 @@ stringFactoidFactLens
         type: "string",
         fact: "Site of JFK assassination"
     })
+
+// {
+//     type: "string",
+//     fact: "Frozen margarita machine invented here"
+// }
 ```
 
 ---
@@ -487,7 +510,9 @@ Our stringFactoidFactLens only works on _StringFactoids_ -- We need a __Prism__.
 
 ```typescript
 // Given a discriminated union, focus on StringFactoids
-const stringFactoidPrism = Prism.fromPredicate<StringFactoid | HomeOfFactoid, StringFactoid>((a): a is StringFactoid => a.type === "string");
+const stringFactoidPrism = Prism.fromPredicate<StringFactoid | HomeOfFactoid, StringFactoid>(
+    (a): a is StringFactoid => a.type === "string"
+);
 
 // We could define an inverse prism that focuses on HomeOfFactoids too,
 // but we'll skip that for now
@@ -663,3 +688,9 @@ Some Optics libraries to check out:
 | _Partial Lenses_ | Lens Optional Prism Iso Traversal | Plays fast and loose with the lens laws in favor of providing more straightforward APIs and utilities. Claims to have near-native performance for composed lenses. |
 
 There are many others, but these are actively maintained.
+
+---
+
+[.text: alignment(center)]
+
+Questions?

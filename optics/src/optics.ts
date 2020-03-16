@@ -1,4 +1,4 @@
-import { Lens, Prism, Optional, fromTraversable } from 'monocle-ts';
+import { Lens, Prism, Optional, fromTraversable, Iso } from 'monocle-ts';
 import { array } from 'fp-ts/lib/Array'
 
 import {
