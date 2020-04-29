@@ -102,9 +102,9 @@ class SGetter {
         this.setter = setter;
     }
 
-    get(target) { return this.get(target); }
+    get(target) { return this.getter(target); }
 
-    set(newValue, target) { return this.set(newValue, target); }
+    set(newValue, target) { return this.setter(newValue, target); }
 }
 
 const nameSgetter = new SGetter(getName, setName);
@@ -135,7 +135,7 @@ class SGetter {
 }
 
 // For example...
-const myFirstName = SGetter
+const myLastName = SGetter
     .fromProp('name')
     .compose(Sgetter.fromProp('last'))
 ```
@@ -416,16 +416,18 @@ All of these optics, no matter how complicated, are still just __getters__ and _
 ### Let's say we have some __Interfaces__
 
 ```typescript
-export interface Data { cities: City[] }
+// Things to notice:
+
+export interface Data { cities: City[] } // 1. This is a list of City
 
 export interface City {
     name: string
-    trivia?: CityTrivia
+    trivia?: CityTrivia // 2. This property is optional
 }
 
 export interface CityTrivia {
     population: number
-    factoid: StringFactoid | HomeOfFactoid
+    factoid: StringFactoid | HomeOfFactoid // 3. This property is a discriminated union
 }
 
 export interface StringFactoid {
@@ -449,11 +451,13 @@ export const data: Data = {
     cities: [
         {
             name: "Atlanta"
+            // ATL has no trivia -- it's optional
         },
         {
             name: "Dallas",
             trivia: {
                 population: 1341000,
+                // The factoid is a String Factoid -- not a HomeOf Factoid
                 factoid: {
                     type: "string",
                     fact: "Site of JFK assassination"
@@ -682,7 +686,7 @@ Some Optics libraries to check out:
 
 | __Library__        | __Optics__                            | __Comments__                                                                                                                                                           |
 |----------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| _Monocle_        | Lens Optional Prism Iso Traversal | Part of a larger ecosystem called "fp-ts." Documentation is (for lack of a better term) garbage. Typescript First.                                                                             |
+| _Monocle_        | Lens Optional Prism Iso Traversal | Part of a larger ecosystem called "fp-ts." Documentation is not beginner friendly. Typescript First.                                                                             |
 | _Ramda_          | Lens                              | Lenses exposed by Ramda are Partial. Partial Typescript support.                                                                                                   |
 | _Shades_         | Lens Traversal                    | Shades technically implements other optics, but it calls them Virtual Lenses? Has full Typescript support.                                                         |
 | _Partial Lenses_ | Lens Optional Prism Iso Traversal | Plays fast and loose with the lens laws in favor of providing more straightforward APIs and utilities. Claims to have near-native performance for composed lenses. |
